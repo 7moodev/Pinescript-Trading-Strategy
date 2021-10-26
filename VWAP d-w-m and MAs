@@ -1,0 +1,118 @@
+//@version=4
+study("VWAP d/w/m and MAs", overlay=true)
+showVWAP = input(true, type=input.bool, title="Show daily VWAP")
+showVWAPW = input(true, type=input.bool, title="Show weekly VWAP")
+showVWAPM = input(true, type=input.bool, title="Show monthly VWAP")
+showVWAPY = input(true, type=input.bool, title="Show yearly VWAP")
+showVWAPT = input(true, type=input.bool, title="Show total VWAP")
+
+showPrevVWAP = input(true, type=input.bool, title="Show previous daily VWAP close")
+showPrevVWAPW = input(true, type=input.bool, title="Show previous weekly VWAP close")
+showPrevVWAPM = input(true, type=input.bool, title="Show previous monthly VWAP close")
+showPrevVWAPY = input(true, type=input.bool, title="Show previous yearly VWAP close.")
+
+start = security(syminfo.tickerid, 'D', time, lookahead = barmerge.lookahead_on)
+startw = security(syminfo.tickerid, 'W', time, lookahead = barmerge.lookahead_on)
+startm = security(syminfo.tickerid, 'M', time, lookahead = barmerge.lookahead_on)
+starty = security(syminfo.tickerid, '12M', time, lookahead = barmerge.lookahead_on)
+
+newSession = iff(change(start), 1, 0)
+newSessionW = iff(change(startw), 1, 0)
+newSessionM = iff(change(startm), 1, 0)
+newSessionY = iff(change(starty), 1, 0)
+newSessionT = iff(barstate.isfirst, 1, 0)
+
+vwapsum = 0.0
+vwapsum := iff(newSession, hlc3*volume, vwapsum[1]+hlc3*volume)
+volumesum = 0.0
+volumesum := iff(newSession, volume, volumesum[1]+volume)
+v2sum = 0.0
+v2sum := iff(newSession, volume*hlc3*hlc3, v2sum[1]+volume*hlc3*hlc3)
+myvwap = 0.0
+myvwap := vwapsum/volumesum
+dev = sqrt(max(v2sum/volumesum - myvwap*myvwap, 0))
+    
+vwapsumW = 0.0
+vwapsumW := iff(newSessionW, hlc3*volume, vwapsumW[1]+hlc3*volume)
+volumesumW = 0.0
+volumesumW := iff(newSessionW, volume, volumesumW[1]+volume)
+myvwapW = 0.0
+myvwapW := vwapsumW/volumesumW
+
+vwapsumM = 0.0
+vwapsumM := iff(newSessionM, hlc3*volume, vwapsumM[1]+hlc3*volume)
+volumesumM = 0.0
+volumesumM := iff(newSessionM, volume, volumesumM[1]+volume)
+myvwapM = 0.0
+myvwapM := vwapsumM/volumesumM
+
+vwapsumY = 0.0
+vwapsumY := iff(newSessionY, hlc3*volume, vwapsumY[1]+hlc3*volume)
+volumesumY = 0.0
+volumesumY := iff(newSessionY, volume, volumesumY[1]+volume)
+myvwapY = 0.0
+myvwapY := vwapsumY/volumesumY
+
+vwapsumT= 0.0
+vwapsumT := iff(newSessionT, hlc3*volume, vwapsumT[1]+hlc3*volume)
+volumesumT = 0.0
+volumesumT := iff(newSessionT, volume, volumesumT[1]+volume)
+myvwapT = 0.0
+myvwapT := vwapsumT/volumesumT
+
+if (barstate.isrealtime)
+    myvwap := myvwap[1]
+    volumesum := volumesum[1]
+    myvwapW := myvwapW[1]
+    volumesumW := volumesumW[1]
+    myvwapM := myvwapM[1]
+    volumesumM := volumesumM[1]
+    myvwapY := myvwapY[1]
+    volumesumY := volumesumY[1]   
+    myvwapT := myvwapT[1]
+    volumesumT := volumesumT[1]
+    dev := dev[1]
+
+Cyan = color.new(#00FFFF,0)     
+    
+plot_daily = plot(showVWAP ? myvwap : na, title="Daily VWAP", style=plot.style_cross, color=color.fuchsia, linewidth=1, transp=20)
+plot_weekly= plot(showVWAPW ? myvwapW : na, title="Weekly VWAP", style=plot.style_cross, color=Cyan, linewidth=2, transp=0)
+plot_monthly = plot(showVWAPM ? myvwapM : na, title="Monthly VWAP", style=plot.style_circles, color=color.white, linewidth=2, transp=0)
+plot_yearly = plot(showVWAPY ? myvwapY : na, title="Yearly VWAP", style=plot.style_circles, color=color.yellow, linewidth=2, transp=0)
+plot_total = plot(showVWAPT ? myvwapT : na, title="Total VWAP", style=plot.style_cross, color=color.yellow, linewidth=2, transp=0)
+
+MyGreenRaw = color.new(#00FF00,0)        
+MyRedRaw = color.new(#FF0000,0) 
+
+prevwap = 0.0
+prevwap := iff(newSession, myvwap[1], prevwap[1])
+plot(showPrevVWAP ? prevwap : na, title="Prev Daily VWAP", style=plot.style_circles, color=close > prevwap ? MyGreenRaw : MyRedRaw, linewidth=1, transp=20)
+
+prevwapW = 0.0
+prevwapW := iff(newSessionW, myvwapW[1], prevwapW[1])
+plot(showPrevVWAPW ? prevwapW : na, title="Prev Weekly VWAP", style=plot.style_cross, color=close > prevwapW ? MyGreenRaw : MyRedRaw, linewidth=2, transp=0)
+
+prevwapM = 0.0
+prevwapM := iff(newSessionM, myvwapM[1], prevwapM[1])
+plot(showPrevVWAPM ? prevwapM : na, title="Prev Monthly VWAP", style=plot.style_circles, color=close > prevwapM ? MyGreenRaw : MyRedRaw, linewidth=2, transp=0)
+
+prevwapY = 0.0
+prevwapY := iff(newSessionY, myvwapY[1], prevwapY[1])
+plot(showPrevVWAPY ? prevwapY : na, title="Prev Yearly VWAP", color=close > prevwapY ? MyGreenRaw : MyRedRaw, linewidth=2, transp=0)
+
+sma20 = sma(close, 2880)
+sma20old = sma(close, 20)
+sma50 = sma(close, 4800)
+sma100 = sma(close, 4800)
+sma200 = sma(close, 4800)
+output20old = security(syminfo.tickerid, 'D', sma20old, lookahead=barmerge.lookahead_on)
+output20 = security(syminfo.tickerid, '10', sma20, lookahead=barmerge.lookahead_on)
+output50 = security(syminfo.tickerid, '15', sma50,  lookahead=barmerge.lookahead_on)
+output100 = security(syminfo.tickerid, '30', sma100,  lookahead=barmerge.lookahead_on)
+output200 = security(syminfo.tickerid, '60', sma200,  lookahead=barmerge.lookahead_on)
+
+plot(output200, title= '200 SMA', color=color.red, linewidth=2, transp=0)
+plot(output100, title= '100 SMA', color=color.orange, linewidth=2, transp=0)
+plot(output50, title= '50 SMA', color=color.yellow, linewidth=2)
+plot(output20, title= '20 SMA', color=color.silver, linewidth=2)
+plot(output20old, title= '20 SMAold', color=color.silver, linewidth=2)
