@@ -1,0 +1,78 @@
+//@version=4
+study("zwap", max_lines_count=500)
+multiplier = input(7, "Multiplier")
+pink = color.new(#d90082, 0)
+period = (timeframe.period == '1') ? 1 : (timeframe.period == '3') ? 3 : (timeframe.period == '5') ? 5 : (timeframe.period == '10') ? 10 : (timeframe.period == '15') ? 15 : (timeframe.period == '20') ? 20 : (timeframe.period == '30') ? 30 : (timeframe.period == '45') ? 45 : (timeframe.period == '60') ? 60 : (timeframe.period == '120') ? 120 : (timeframe.period == '90') ? 90 : (timeframe.period == '180') ? 180 : (timeframe.period == '240') ? 240 : (timeframe.period == '360') ? 360 : (timeframe.period == '480') ? 480 : (timeframe.period == '720') ? 720 : (timeframe.period == '3D') ? 5040 : (timeframe.period == '2D') ? 2880 : (timeframe.period == 'D') ? 1440 : 1
+
+cumulativePeriod = 1440/period*multiplier
+
+typicalPrice = (high + low + close) / 3
+typicalPriceVolume = typicalPrice * volume
+v2 = typicalPrice * typicalPrice * volume
+cumulativeTypicalPriceVolume = sum(typicalPriceVolume, cumulativePeriod)
+cumulativeVolume = sum(volume, cumulativePeriod)
+v2sum = sum(v2, cumulativePeriod)
+vwapPeriod = cumulativeTypicalPriceVolume / cumulativeVolume
+dev = 0.0
+dev := sqrt(max(v2sum/cumulativeVolume - vwapPeriod*vwapPeriod, 0))
+
+m1=plot(1,transp=100)
+m2=plot(-1,transp=100)
+ul1=plot(2, color=color.white, transp=0)
+ul2=plot(2.5, transp=100)
+ul3=plot(3, color=color.white, transp=0)
+ll1=plot(-2, color=color.white, transp=0)
+ll2=plot(-2.5, transp=100)
+ll3=plot(-3, color=color.white, transp=0)
+z0=plot(0,color=color.white,transp=50)
+
+vwapDopen = (vwapPeriod-open)/dev
+vwapDclose = (vwapPeriod-close)/dev
+vwapDhigh = (vwapPeriod-high)/dev
+vwapDlow = (vwapPeriod-low)/dev
+if vwapDclose > 3
+    vwapDclose := 3
+if vwapDclose < -3
+    vwapDclose := -3
+if vwapDopen > 3
+    vwapDopen := 3
+if vwapDopen < -3
+    vwapDopen := -3
+if vwapDhigh > 3
+    vwapDhigh := 3
+if vwapDhigh < -3
+    vwapDhigh := -3
+if vwapDlow > 3
+    vwapDlow := 3
+if vwapDlow < -3
+    vwapDlow := -3
+
+
+fillcolor = color.fuchsia
+linecolor = color.aqua
+
+if multiplier == 7
+    linecolor := color.fuchsia
+    fillcolor := color.aqua
+
+fill(ul1,ul2, color=fillcolor, transp=55)
+fill(ul2,ul3, color=fillcolor, transp=40)
+fill(ll1,ll2, color=fillcolor, transp=55)
+fill(ll2,ll3, color=fillcolor, transp=40)
+fill(m1, ul1, color=fillcolor, transp=75)
+fill(ll1, m2, color=fillcolor, transp=75)
+
+bar = line.new(x1=bar_index, y1=vwapDclose[1], x2=bar_index, y2=vwapDclose)
+wick = line.new(x1=bar_index, y1=vwapDhigh, x2=bar_index, y2=vwapDlow)
+if vwapDopen <= vwapDclose
+    line.set_color(bar, pink)
+    line.set_color(wick, pink)
+else
+    line.set_color(bar, color.white)
+    line.set_color(wick, color.white)
+line.set_width(bar, 5)
+line.set_width(wick, 2)
+
+thezero=1
+if period>60
+    thezero := 0
