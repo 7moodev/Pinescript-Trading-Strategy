@@ -1,78 +1,49 @@
-//@version=4
-study("zwap", max_lines_count=500)
-multiplier = input(7, "Multiplier")
-pink = color.new(#d90082, 0)
-period = (timeframe.period == '1') ? 1 : (timeframe.period == '3') ? 3 : (timeframe.period == '5') ? 5 : (timeframe.period == '10') ? 10 : (timeframe.period == '15') ? 15 : (timeframe.period == '20') ? 20 : (timeframe.period == '30') ? 30 : (timeframe.period == '45') ? 45 : (timeframe.period == '60') ? 60 : (timeframe.period == '120') ? 120 : (timeframe.period == '90') ? 90 : (timeframe.period == '180') ? 180 : (timeframe.period == '240') ? 240 : (timeframe.period == '360') ? 360 : (timeframe.period == '480') ? 480 : (timeframe.period == '720') ? 720 : (timeframe.period == '3D') ? 5040 : (timeframe.period == '2D') ? 2880 : (timeframe.period == 'D') ? 1440 : 1
+//@version=5
+strategy("VWAP_XXIV_CLONE", overlay=true, currency = currency.USDT, initial_capital = 1000, commission_type = strategy.commission.percent, commission_value = 0.0075)
 
-cumulativePeriod = 1440/period*multiplier
+size = 1000/close
+Anfangszeit = input.time(timestamp("1 Aug 2021 00:00 +0000"), "From")
+Endezeit = input.time(timestamp("1 Aug 2022 00:00 +0000"), "Till")
+Zeit = time >= Anfangszeit and Endezeit <= time
+long_tp_pct = input(1.5, "Long TP in %")
+long_sl_pct = input(2.5, "Long SL in %")
+short_tp_pct = input(2.5, "Short TP in %")
+short_sl_pct = input(2.5, "SHORT SL in %")
 
-typicalPrice = (high + low + close) / 3
-typicalPriceVolume = typicalPrice * volume
-v2 = typicalPrice * typicalPrice * volume
-cumulativeTypicalPriceVolume = sum(typicalPriceVolume, cumulativePeriod)
-cumulativeVolume = sum(volume, cumulativePeriod)
-v2sum = sum(v2, cumulativePeriod)
-vwapPeriod = cumulativeTypicalPriceVolume / cumulativeVolume
-dev = 0.0
-dev := sqrt(max(v2sum/cumulativeVolume - vwapPeriod*vwapPeriod, 0))
+Length = input(328, "VWAP Length")
+vwap328 = ta.vwma(close, Length)
+vwap_close_pct = (close - vwap328) / close * 100
 
-m1=plot(1,transp=100)
-m2=plot(-1,transp=100)
-ul1=plot(2, color=color.white, transp=0)
-ul2=plot(2.5, transp=100)
-ul3=plot(3, color=color.white, transp=0)
-ll1=plot(-2, color=color.white, transp=0)
-ll2=plot(-2.5, transp=100)
-ll3=plot(-3, color=color.white, transp=0)
-z0=plot(0,color=color.white,transp=50)
+  
+//LONG BABY
+green = close > open
+green_strong = close > high[1] and close > high[2]
+long_condition = close > vwap328 and vwap_close_pct >= 0.25 and vwap_close_pct <= 0.57
+break_up = close[1] < vwap328 
+if (long_condition and green and green_strong and Zeit and break_up and strategy.position_size >=0)
+    tp_long = vwap328 * ((long_tp_pct/100)+1)
+    sl_long = vwap328 * (1-(long_sl_pct/100))
 
-vwapDopen = (vwapPeriod-open)/dev
-vwapDclose = (vwapPeriod-close)/dev
-vwapDhigh = (vwapPeriod-high)/dev
-vwapDlow = (vwapPeriod-low)/dev
-if vwapDclose > 3
-    vwapDclose := 3
-if vwapDclose < -3
-    vwapDclose := -3
-if vwapDopen > 3
-    vwapDopen := 3
-if vwapDopen < -3
-    vwapDopen := -3
-if vwapDhigh > 3
-    vwapDhigh := 3
-if vwapDhigh < -3
-    vwapDhigh := -3
-if vwapDlow > 3
-    vwapDlow := 3
-if vwapDlow < -3
-    vwapDlow := -3
+    strategy.entry("long", strategy.long, qty=size)
+    if close > vwap328 
+        strategy.exit("exit_long","long", qty = size, limit= tp_long, stop = sl_long)
 
 
-fillcolor = color.fuchsia
-linecolor = color.aqua
 
-if multiplier == 7
-    linecolor := color.fuchsia
-    fillcolor := color.aqua
+//SHORT BABY
+red = close < open
+red_strong = close < low[1] and  close < low[2] 
+break_down = close[1] > vwap328 
+short_condition = close < vwap328 and vwap_close_pct <= -0.025 and vwap_close_pct >= -0.5
+if short_condition and red and red_strong and Zeit and break_down and strategy.position_size >=0
+    strategy.entry("short", strategy.short, qty=size)
+    tp_short = vwap328 * (1-(short_tp_pct/100))
+    sl_short = vwap328 * ((short_sl_pct/100)+1)
+    strategy.exit("exit short", "short", qty=size, limit = tp_short, stop=sl_short)
 
-fill(ul1,ul2, color=fillcolor, transp=55)
-fill(ul2,ul3, color=fillcolor, transp=40)
-fill(ll1,ll2, color=fillcolor, transp=55)
-fill(ll2,ll3, color=fillcolor, transp=40)
-fill(m1, ul1, color=fillcolor, transp=75)
-fill(ll1, m2, color=fillcolor, transp=75)
+plot(vwap328, "VWAP", color.rgb(60, 248, 255), 1, plot.style_line)
 
-bar = line.new(x1=bar_index, y1=vwapDclose[1], x2=bar_index, y2=vwapDclose)
-wick = line.new(x1=bar_index, y1=vwapDhigh, x2=bar_index, y2=vwapDlow)
-if vwapDopen <= vwapDclose
-    line.set_color(bar, pink)
-    line.set_color(wick, pink)
-else
-    line.set_color(bar, color.white)
-    line.set_color(wick, color.white)
-line.set_width(bar, 5)
-line.set_width(wick, 2)
 
-thezero=1
-if period>60
-    thezero := 0
+
+
+
